@@ -18,57 +18,127 @@ import QtQuick 2.0
 import QtQuick.Layouts 1.11
 import SortFilterProxyModel 0.2
 import QtMultimedia 5.9
-import "VerticalList"
-import "GridView"
 import "Global"
-import "GameDetails"
-import "ShowcaseView"
-import "Settings"
+import "Screens"
+import "Lists"
+import "utils.js" as Utils
+import "themes.js" as Themes
+import "config.js" as Config
 
 FocusScope {
 id: root
 
-    FontLoader { id: titleFont; source: "assets/fonts/SourceSansPro-Bold.ttf" }
-    FontLoader { id: subtitleFont; source: "assets/fonts/OpenSans-Bold.ttf" }
-    FontLoader { id: bodyFont; source: "assets/fonts/OpenSans-Semibold.ttf" }
+    FontLoader { id: titleFont; source:      "assets/fonts/YaHei-Bold.ttf" }
+    FontLoader { id: subtitleFont; source:   "assets/fonts/YaHei-Bold.ttf" }
+    FontLoader { id: bodyFont; source:       "assets/fonts/YaHei.ttf" }
+
+    // Pull in our custom lists and define
+    ListAllGames		{ id: listNone;        max: 0 }
+    ListAllGames		{ id: listAllGames;	   max: 0 }
+    ListCollectionGames { id: listCollectionGames; }
+    ListFavorites		{ id: listFavorites;   max: settings.ShowcaseColumns }
+    ListLastPlayed		{ id: listLastPlayed;  max: settings.ShowcaseColumns }
+    ListMostPlayed		{ id: listMostPlayed;  max: settings.ShowcaseColumns }
+    ListRecommended		{ id: listRecommended; max: settings.ShowcaseColumns }
+    ListPublisher		{ id: listPublisher;   max: settings.ShowcaseColumns; publisher: randoPub }
+    ListGenre			{ id: listGenre;       max: settings.ShowcaseColumns; genre: randoGenre }
+	ListPlatforms		{ id: listPlatforms;   max: 0 }
+
+    property string randoPub: (Utils.returnRandom(Utils.uniqueValuesArray('publisher')) || '')
+    property string randoGenre: (Utils.returnRandom(Utils.uniqueValuesArray('genreList'))[0] || '').toLowerCase()
 
     // Load settings
     property var settings: {
+
+		let config = {
+			get: function (name) {
+				return api.memory.has(name) ? api.memory.get(name) : this[name]
+			}
+		}
+
+		let all = Config.default_config()
+		for (let items of Object.values(all)) {
+			for (let it of items) {
+				config[it.name] = it.default_value
+			}
+		}
+
         return {
-            PlatformView:                  api.memory.has("Game View") ? api.memory.get("Game View") : "Grid",
-            GridThumbnail:                 api.memory.has("Grid Thumbnail") ? api.memory.get("Grid Thumbnail") : "Dynamic Wide",
-            GridColumns:                   api.memory.has("Number of columns") ? api.memory.get("Number of columns") : "3",
-            GameBackground:                api.memory.has("Game Background") ? api.memory.get("Game Background") : "Screenshot",
-            GameLogo:                      api.memory.has("Game Logo") ? api.memory.get("Game Logo") : "Show",
-            GameRandomBackground:          api.memory.has("Randomize Background") ? api.memory.get("Randomize Background") : "No",
-            GameBlurBackground:            api.memory.has("Blur Background") ? api.memory.get("Blur Background") : "No",
-            VideoPreview:                  api.memory.has("Video preview") ? api.memory.get("Video preview") : "Yes",
-            AllowThumbVideo:               api.memory.has("Allow video thumbnails") ? api.memory.get("Allow video thumbnails") : "Yes",
-            AllowThumbVideoAudio:          api.memory.has("Play video thumbnail audio") ? api.memory.get("Play video thumbnail audio") : "No",
-            HideLogo:                      api.memory.has("Hide logo when thumbnail video plays") ? api.memory.get("Hide logo when thumbnail video plays") : "No",
-            HideButtonHelp:                api.memory.has("Hide button help") ? api.memory.get("Hide button help") : "No",
-            MouseHover:                    api.memory.has("Enable mouse hover") ? api.memory.get("Enable mouse hover") : "No",
-            AlwaysShowTitles:              api.memory.has("Always show titles") ? api.memory.get("Always show titles") : "No",
-            AnimateHighlight:              api.memory.has("Animate highlight") ? api.memory.get("Animate highlight") : "No",
-            AllowVideoPreviewAudio:        api.memory.has("Video preview audio") ? api.memory.get("Video preview audio") : "No",
-            ShowScanlines:                 api.memory.has("Show scanlines") ? api.memory.get("Show scanlines") : "Yes",
-            DetailsDefault:                api.memory.has("Default to full details") ? api.memory.get("Default to full details") : "No",
-            ShowcaseColumns:               api.memory.has("Number of games showcased") ? api.memory.get("Number of games showcased") : "15",
-            ShowcaseFeaturedCollection:    api.memory.has("Featured collection") ? api.memory.get("Featured collection") : "Favorites",
-            ShowcaseCollection1:           api.memory.has("Collection 1") ? api.memory.get("Collection 1") : "Recently Played",
-            ShowcaseCollection1_Thumbnail: api.memory.has("Collection 1 - Thumbnail") ? api.memory.get("Collection 1 - Thumbnail") : "Wide",
-            ShowcaseCollection2:           api.memory.has("Collection 2") ? api.memory.get("Collection 2") : "Most Played",
-            ShowcaseCollection2_Thumbnail: api.memory.has("Collection 2 - Thumbnail") ? api.memory.get("Collection 2 - Thumbnail") : "Tall",
-            ShowcaseCollection3:           api.memory.has("Collection 3") ? api.memory.get("Collection 3") : "Top by Publisher",
-            ShowcaseCollection3_Thumbnail: api.memory.has("Collection 3 - Thumbnail") ? api.memory.get("Collection 3 - Thumbnail") : "Wide",
-            ShowcaseCollection4:           api.memory.has("Collection 4") ? api.memory.get("Collection 4") : "Top by Genre",
-            ShowcaseCollection4_Thumbnail: api.memory.has("Collection 4 - Thumbnail") ? api.memory.get("Collection 4 - Thumbnail") : "Tall",
-            ShowcaseCollection5:           api.memory.has("Collection 5") ? api.memory.get("Collection 5") : "None",
-            ShowcaseCollection5_Thumbnail: api.memory.has("Collection 5 - Thumbnail") ? api.memory.get("Collection 5 - Thumbnail") : "Wide",
-            WideRatio:                     api.memory.has("Wide - Ratio") ? api.memory.get("Wide - Ratio") : "0.64",
-            TallRatio:                     api.memory.has("Tall - Ratio") ? api.memory.get("Tall - Ratio") : "0.66"
-            
+            GridColumns:                   config.get("Number of columns"),
+            AlwaysShowTitles:              config.get("Always show titles"),
+            AlwaysShowHighlightedTitles:   config.get("Always show highlighted titles"),
+            BorderHighlight:               config.get("Border highlight"),
+            HideButtonHelp:                config.get("Hide button help"),
+            ColorLayout:                   config.get("Color Layout"),
+			ColorBackground:               config.get("Color Background"),
+            MouseHover:                    config.get("Enable mouse hover"),
+
+			ShowcaseColumns:               config.get("Number of games showcased"),
+			ShowcaseFeaturedCollection:    config.get("Featured collection"),
+			ShowcaseCollection1:           config.get("Collection 1"),
+			ShowcaseCollection2:           config.get("Collection 2"),
+			ShowcaseCollection3:           config.get("Collection 3"),
+			ShowcaseCollection4:           config.get("Collection 4"),
+			ShowcaseCollection5:           config.get("Collection 5"),
+
+			VideoPreview:                  config.get("Video preview"),
+			AllowVideoPreviewAudio:        config.get("Video preview audio"),
+			ShowScanlines:                 config.get("Show scanlines"),
+
         }
+    }
+
+	property var modelList: [
+		getCollection("Favorites"),
+		getCollection("Platforms"),
+		getCollection(settings.ShowcaseCollection1),
+		getCollection(settings.ShowcaseCollection2),
+		getCollection(settings.ShowcaseCollection3),
+		getCollection(settings.ShowcaseCollection4),
+		getCollection(settings.ShowcaseCollection5),
+	]
+
+    function getCollection(collectionName) {
+        var collection = {
+            enabled: collectionName !== "None",
+			aspectRatio: 1.4175
+        };
+
+        switch (collectionName) {
+            case "Favorites":
+                collection.search = listFavorites;
+                break;
+			case "Platforms":
+                collection.search = listPlatforms;
+				collection.aspectRatio = 0.5;
+				break;
+            case "Recently Played":
+                collection.search = listLastPlayed;
+                break;
+            case "Most Played":
+                collection.search = listMostPlayed;
+                break;
+            case "Recommended":
+                collection.search = listRecommended;
+                break;
+            case "Top by Publisher":
+                collection.search = listPublisher;
+                break;
+            case "Top by Genre":
+                collection.search = listGenre;
+                break;
+            case "None":
+                collection.search = listNone;
+                break;
+            default:
+                collection.search = listAllGames;
+                break;
+        }
+
+		collection.index = collection.search.games.count > 0 ? 0 : -1;
+        collection.title = collection.search.collection.name;
+		collection.shortName = collection.search.collection.shortName;
+        return collection;
     }
 
     // Collections
@@ -79,18 +149,18 @@ id: root
 
     // Stored variables for page navigation
     property int storedHomePrimaryIndex: 0
-    property int storedHomeSecondaryIndex: 0
-    property int storedCollectionIndex: 0
-    property int storedCollectionGameIndex: 0
+    property int storedCollectionGameIndex: -1
+	property int showcaseHeaderMenuIndex: -1
 
     // Reset the stored game index when changing collections
-    onCurrentCollectionIndexChanged: storedCollectionGameIndex = 0
+    onCurrentCollectionIndexChanged: storedCollectionGameIndex = -1
 
     // Filtering options
     property bool showFavs: false
-    property var sortByFilter: ["sort_title", "lastPlayed", "playCount", "rating"]
+    property var sortByFilter: ["title", "lastPlayed", "playCount", "rating"]
     property int sortByIndex: 0
     property var orderBy: Qt.AscendingOrder
+	property bool searchAllGames: true
     property string searchTerm: ""
     property bool steam: currentCollection.name === "Steam"
     function steamExists() {
@@ -108,10 +178,21 @@ id: root
     }
 
     function cycleSort() {
-        if (sortByIndex < sortByFilter.length - 1)
+        if (sortByIndex < sortByFilter.length - 1) {
             sortByIndex++;
-        else
+		} else {
             sortByIndex = 0;
+		}
+		
+		switch (sortByFilter[sortByIndex]) {
+			case "title":
+				orderBy = Qt.AscendingOrder;
+				break;
+			case "lastPlayed":
+			case "playCount":
+				orderBy = Qt.DescendingOrder;
+				break;
+		}
     }
 
     function toggleOrderBy() {
@@ -126,7 +207,7 @@ id: root
         if (game !== null) {
             //if (game.collections.get(0).name === "Steam")
                 launchGameScreen();
-
+			
             saveCurrentState(game);
             game.launch();
         } else {
@@ -143,15 +224,11 @@ id: root
         api.memory.set('savedState', root.state);
         api.memory.set('savedCollection', currentCollectionIndex);
         api.memory.set('lastState', JSON.stringify(lastState));
-        api.memory.set('lastGame', JSON.stringify(lastGame));
         api.memory.set('storedHomePrimaryIndex', storedHomePrimaryIndex);
-        api.memory.set('storedHomeSecondaryIndex', storedHomeSecondaryIndex);
-        api.memory.set('storedCollectionIndex', currentCollectionIndex);
         api.memory.set('storedCollectionGameIndex', storedCollectionGameIndex);
 
         const savedGameIndex = api.allGames.toVarArray().findIndex(g => g === game);
         api.memory.set('savedGame', savedGameIndex);
-
         api.memory.set('To Game', 'True');
     }
 
@@ -159,11 +236,8 @@ id: root
     property bool fromGame: api.memory.has('To Game');
     function returnedFromGame() {
         lastState                   = JSON.parse(api.memory.get('lastState'));
-        lastGame                    = JSON.parse(api.memory.get('lastGame'));
         currentCollectionIndex      = api.memory.get('savedCollection');
         storedHomePrimaryIndex      = api.memory.get('storedHomePrimaryIndex');
-        storedHomeSecondaryIndex    = api.memory.get('storedHomeSecondaryIndex');
-        currentCollectionIndex      = api.memory.get('storedCollectionIndex');
         storedCollectionGameIndex   = api.memory.get('storedCollectionGameIndex');
 
         currentGame                 = api.allGames.get(api.memory.get('savedGame'));
@@ -173,10 +247,7 @@ id: root
         api.memory.unset('savedState');
         api.memory.unset('savedGame');
         api.memory.unset('lastState');
-        api.memory.unset('lastGame');
         api.memory.unset('storedHomePrimaryIndex');
-        api.memory.unset('storedHomeSecondaryIndex');
-        api.memory.unset('storedCollectionIndex');
         api.memory.unset('storedCollectionGameIndex');
 
         // Remove this one so we only have it when we come back from the game and not at Pegasus launch
@@ -184,19 +255,7 @@ id: root
     }
 
     // Theme settings
-    property var theme: {
-        return {
-            main:           "#1d253d",
-            secondary:      "#202a44",
-            accent:         "#f00980",
-            highlight:      "#f00980",
-            text:           "#ececec",
-            button:         "#f00980",
-            gradientstart:  "#000d111d",
-            gradientend:    "#FF0d111d"
-        }
-    }
-
+	property var theme: Themes.get(settings.ColorBackground, settings.ColorLayout)
     property real globalMargin: vpx(30)
     property real helpMargin: buttonbar.height
     property int transitionTime: 100
@@ -204,237 +263,139 @@ id: root
     // State settings
     states: [
         State {
-            name: "softwarescreen";
+            name: "gamelist_screen";
+        },
+		State {
+			name: "search_screen";
+		},
+        State {
+            name: "showcase_screen";
         },
         State {
-            name: "softwaregridscreen";
+            name: "gamedetails_screen";
         },
         State {
-            name: "showcasescreen";
+            name: "settings_screen";
         },
         State {
-            name: "gameviewscreen";
-        },
-        State {
-            name: "settingsscreen";
-        },
-        State {
-            name: "launchgamescreen";
+            name: "launchgame_screen";
         }
     ]
 
     property var lastState: []
-    property var lastGame: []
 
     // Screen switching functions
-    function softwareScreen() {
-        sfxAccept.play();
-        lastState.push(state);
-        searchTerm = "";
-        switch(settings.PlatformView) {
-            case "Grid":
-                root.state = "softwaregridscreen";
-                break;
-            default:
-                root.state = "softwarescreen";
-        }
-    }
-
     function showcaseScreen() {
         sfxAccept.play();
         lastState.push(state);
-        root.state = "showcasescreen";
+        root.state = "showcase_screen";
     }
 
-    function gameDetails(game) {
+    function gameListScreen() {
         sfxAccept.play();
-        // As long as there is a state history, save the last game
-        if (lastState.length != 0)
-            lastGame.push(currentGame);
-
-        // Push the new game
-        if (game !== null)
-            currentGame = game;
-
-        // Save the state before pushing the new one
         lastState.push(state);
-        root.state = "gameviewscreen";
+        searchTerm = "";
+        root.state = "gamelist_screen";
     }
+
+	function searchScreen() {
+		sfxAccept.play();
+        lastState.push(state);
+        searchTerm = "";
+		storedCollectionGameIndex = -1;
+        root.state = "search_screen";
+	}
 
     function settingsScreen() {
         sfxAccept.play();
         lastState.push(state);
-        root.state = "settingsscreen";
+        root.state = "settings_screen";
+    }
+
+    function gameDetailsScreen(game) {
+        sfxAccept.play();
+
+        // Push the new game
+        if (game !== null) {
+            currentGame = game;
+		}
+
+        // Save the state before pushing the new one
+        lastState.push(state);
+        root.state = "gamedetails_screen";
     }
 
     function launchGameScreen() {
         sfxAccept.play();
         lastState.push(state);
-        root.state = "launchgamescreen";
+        root.state = "launchgame_screen";
     }
 
     function previousScreen() {
         sfxBack.play();
-        if (state == lastState[lastState.length-1])
-            popLastGame();
-
         state = lastState[lastState.length - 1];
         lastState.pop();
     }
 
-    function popLastGame() {
-        if (lastGame.length) {
-            currentGame = lastGame[lastGame.length-1];
-            lastGame.pop();
-        }
-    }
-
     // Set default state to the platform screen
     Component.onCompleted: { 
-        root.state = "showcasescreen";
-
+        root.state = "showcase_screen";
         if (fromGame)
             returnedFromGame();
     }
 
     // Background
     Rectangle {
-    id: background
-        
         anchors.fill: parent
-        color: theme.main
+        color: theme.primary
+        //Image { source: "assets/images/backgrounds/halo.jpg"; fillMode: Image.PreserveAspectFit; anchors.fill: parent;  opacity: 0.3 }
+		//gradient: Gradient {
+			//GradientStop { position: 1.0; color: Qt.rgba(1/255.0, 2/255.0, 67/255.0, 1.0) }
+			//GradientStop { position: 0.66; color: Qt.rgba(1/255.0, 73/255.0, 183/255.0, 1.0) }
+			//GradientStop { position: 0.33; color: Qt.rgba(1/255.0, 93/255.0, 194/255.0, 1.0) }
+			//GradientStop { position: 0.0; color: Qt.rgba(3/255.0, 162/255.0, 254/255.0, 1.0) }
+		//}
     }
 
-    Loader  {
-    id: showcaseLoader
-
-        focus: (root.state === "showcasescreen")
-        active: opacity !== 0
-        opacity: focus ? 1 : 0
-        Behavior on opacity { PropertyAnimation { duration: transitionTime } }
-
-        anchors.fill: parent
-        sourceComponent: showcaseview
-        asynchronous: true
+    ScreenLoader  {
+        focus: (root.state === "showcase_screen")
+        sourceComponent: ShowcaseView { focus: true }
     }
 
-    Loader  {
-    id: gridviewloader
-
-        focus: (root.state === "softwaregridscreen")
-        active: opacity !== 0
-        opacity: focus ? 1 : 0
-        Behavior on opacity { PropertyAnimation { duration: transitionTime } }
-
-        anchors.fill: parent
-        sourceComponent: gridview
-        asynchronous: true
+    ScreenLoader  {
+        focus: (root.state === "gamelist_screen")
+        sourceComponent: GameListView { focus: true }
     }
 
-    Loader  {
-    id: listviewloader
-
-        focus: (root.state === "softwarescreen")
-        active: opacity !== 0
-        opacity: focus ? 1 : 0
-        Behavior on opacity { PropertyAnimation { duration: transitionTime } }
-
-        anchors.fill: parent
-        sourceComponent: listview
-        asynchronous: true
+    ScreenLoader  {
+        focus: (root.state === "search_screen")
+        sourceComponent: SearchView { focus: true }
     }
 
-    Loader  {
-    id: gameviewloader
-
-        focus: (root.state === "gameviewscreen")
-        active: opacity !== 0
-        onActiveChanged: if (!active) popLastGame();
-        opacity: focus ? 1 : 0
-        Behavior on opacity { PropertyAnimation { duration: transitionTime } }
-
-        anchors.fill: parent
-        sourceComponent: gameview
-        asynchronous: true
-        //game: currentGame
+    ScreenLoader  {
+        focus: (root.state === "gamedetails_screen")
+        sourceComponent: GameDetailsView { focus: true; game: currentGame }
     }
 
-    Loader  {
-    id: launchgameloader
-
-        focus: (root.state === "launchgamescreen")
-        active: opacity !== 0
-        opacity: focus ? 1 : 0
-        Behavior on opacity { PropertyAnimation { duration: transitionTime } }
-
-        anchors.fill: parent
-        sourceComponent: launchgameview
-        asynchronous: true
+    ScreenLoader  {
+        focus: (root.state === "launchgame_screen")
+        sourceComponent: LaunchGameView { focus: true }
     }
 
-    Loader  {
-    id: settingsloader
-
-        focus: (root.state === "settingsscreen")
-        active: opacity !== 0
-        opacity: focus ? 1 : 0
-        Behavior on opacity { PropertyAnimation { duration: transitionTime } }
-
-        anchors.fill: parent
-        sourceComponent: settingsview
-        asynchronous: true
+    ScreenLoader  {
+        focus: (root.state === "settings_screen")
+        sourceComponent: SettingsView { focus: true }
     }
-
-    Component {
-    id: showcaseview
-
-        ShowcaseViewMenu { focus: true }
-    }
-
-    Component {
-    id: gridview
-
-        GridViewMenu { focus: true }
-    }
-
-    Component {
-    id: listview
-
-        SoftwareListMenu { focus: true }
-    }
-
-    Component {
-    id: gameview
-
-        GameView {
-            focus: true
-            game: currentGame
-        }
-    }
-
-    Component {
-    id: launchgameview
-
-        LaunchGame { focus: true }
-    }
-
-    Component {
-    id: settingsview
-
-        SettingsScreen { focus: true }
-    }
-
     
     // Button help
     property var currentHelpbarModel
     ButtonHelpBar {
     id: buttonbar
-
-        height: vpx(50)
         anchors {
-            left: parent.left; right: parent.right; rightMargin: globalMargin
+            left: parent.left; right: parent.right
             bottom: parent.bottom
         }
+        height: vpx(50)
         visible: settings.HideButtonHelp === "No"
     }
 

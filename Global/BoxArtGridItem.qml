@@ -16,68 +16,44 @@
 
 import QtQuick 2.8
 import QtGraphicalEffects 1.12
+import "../utils.js" as Utils
 
 Item {
 id: root
 
-    // NOTE: This is technically duplicated from utils.js but importing that file into every delegate causes crashes
-    function steamAppID (gameData) {
-        var str = gameData.assets.boxFront.split("header");
-        return str[0];
-    }
-    function steamBoxArt(gameData) {
-        return steamAppID(gameData) + '/library_600x900_2x.jpg';
-    }
-    function boxArt(data) {
-        if (data != null) {
-            if (data.assets.boxFront.includes("/header.jpg")) 
-            return steamBoxArt(data);
-            else {
-            if (data.assets.boxFront != "")
-                return data.assets.boxFront;
-            else if (data.assets.poster != "")
-                return data.assets.poster;
-            else if (data.assets.banner != "")
-                return data.assets.banner;
-            else if (data.assets.tile != "")
-                return data.assets.tile;
-            else if (data.assets.cartridge != "")
-                return data.assets.cartridge;
-            else if (data.assets.logo != "")
-                return data.assets.logo;
-            }
-        }
-        return "";
-    }
-
+	property bool showTitles: settings.AlwaysShowTitles === "Yes"
+	property bool showHighlightedTitles: settings.AlwaysShowHighlightedTitles === "Yes"
+	property int verticalSpacing: 0
+	property int horizontalSpacing: 0
     property bool selected
-    Behavior on scale { NumberAnimation { duration: 100 } }
-    property var gameData
-    property int columns: 6
+    property var gameData: modelData
 
     scale: selected ? 1.1 : 1
     z: selected ? 10 : 1
 
-    signal activate()
-    signal highlighted()
+    signal activate
+    signal highlighted
 
-    Item 
-    {
+    Behavior on scale { NumberAnimation { duration: 100 } }
+
+    Item {
     id: container
 
-        anchors.fill: parent
-        anchors.margins: vpx(6)
-        Behavior on opacity { NumberAnimation { duration: 200 } }
-                       
+		anchors {
+			top: parent.top 
+			left: parent.left
+			right: parent.right; rightMargin: horizontalSpacing
+			bottom: parent.bottom; bottomMargin: verticalSpacing
+		}
+              
         Image {
         id: screenshot
             anchors.fill: parent
-            anchors.margins: vpx(2)
 
             asynchronous: true
-            source: boxArt(gameData)
+            source: Utils.boxArt(gameData)
             sourceSize { width: root.width; height: root.height }
-            fillMode: Image.PreserveAspectFit
+            fillMode: Image.PreserveAspectCrop
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
 
@@ -85,83 +61,73 @@ id: root
             id: favicon
 
                 anchors { 
-                    right: parent.right; rightMargin: vpx(7); 
-                    top: parent.top; topMargin: vpx(7) 
+                    right: parent.right; rightMargin: parent.width * 0.05
+                    top: parent.top; topMargin: parent.width * 0.05 
                 }
-                width: vpx(20)
+				width: parent.width * 0.15
                 height: width
-                radius: width/2
+                radius: width / 2
                 color: theme.accent
                 visible: gameData.favorite
                 Image {
                     source: "../assets/images/favicon.svg"
                     asynchronous: true
                     anchors.fill: parent
-                    anchors.margins: vpx(4)            
+                    anchors.margins: parent.width * 0.2       
                 }
             }
         }
 
         Rectangle {
         id: regborder
-
             anchors.fill: parent
             color: "transparent"
             border.width: vpx(1)
             border.color: "white"
-            opacity: 0.1
-            visible: false
+            opacity: 0.2
         }
 
         Rectangle {
         id: overlay
-        
-            width: screenshot.paintedWidth
-            height: screenshot.paintedHeight
-            anchors.centerIn: screenshot
+            anchors.fill: parent
             color: screenshot.source == "" ? theme.secondary : "black"
             opacity: screenshot.source == "" ? 1 : selected ? 0.0 : 0.2
-            visible: false
         }
-
-        
+ 
     }
 
-    Loader {
-        active: selected
-        anchors.fill: container
-        sourceComponent: border
-        asynchronous: true
-    }
+	DropShadow {
+		source: container
+		anchors.fill: container
+		horizontalOffset: selected ? vpx(2) : vpx(1)
+		verticalOffset: horizontalOffset
+		radius: 8.0
+		samples: 12
+		color: "#000000"
+	}
 
-    Component {
-    id: border
-
-        ItemBorder { }
-    }
+	ItemBorder { 
+		anchors.fill: container
+		showHighlightedTitles: root.showHighlightedTitles
+	}
 
     Text {
     id: title
-
+        anchors {
+            top: container.bottom; topMargin: vpx(5)
+            left: parent.left; right: parent.right
+        }
+        visible: showTitles && !selected
         text: modelData ? modelData.title : ''
         color: theme.text
         font {
             family: subtitleFont.name
-            pixelSize: vpx(12)
-            bold: true
+            pixelSize: vpx(16)
+            bold: false
         }
-
         elide: Text.ElideRight
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-
-        anchors {
-            top: container.bottom; topMargin: vpx(8)
-            left: parent.left; right: parent.right
-        }
-
-        opacity: 0.5
-        visible: settings.AlwaysShowTitles === "Yes" && !selected
     }
 
     Text {
@@ -175,7 +141,7 @@ id: root
         font.pixelSize: vpx(18)
         font.family: subtitleFont.name
         font.bold: true
-        style: Text.Outline; styleColor: theme.main
+        style: Text.Outline; styleColor: theme.primary
         visible: screenshot.status === Image.Null || screenshot.status === Image.Error
         anchors.centerIn: parent
         elide: Text.ElideRight
@@ -216,7 +182,7 @@ id: root
         // Accept
         if (api.keys.isAccept(event) && !event.isAutoRepeat) {
             event.accepted = true;
-            activate();        
+            activate();
         }
     }
 
@@ -231,21 +197,4 @@ id: root
         }
     }
     
-    /*// Mouse/touch functionality
-    MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        onEntered: {}
-        onExited: {}
-        onClicked: {
-            if (selected)
-            {
-                activate();
-            }
-            else
-            {
-                currentGameIndex = index
-            }
-        }
-    }*/
 }
